@@ -64,7 +64,7 @@ const Lightbox = ({ activeProps, swipeToDismiss = true, useNativeDriver = false,
         if (renderItem) {
             return renderItem(open);
         }
-        return (<TouchableHighlight underlayColor={underlayColor} onPress={open} onLongPress={onLongPress} disabled={disabled}>
+        return (<TouchableHighlight activeOpacity={1} underlayColor={underlayColor} onPress={open} onLongPress={onLongPress} disabled={disabled}>
           {children}
       </TouchableHighlight>);
     };
