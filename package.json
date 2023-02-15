@@ -1,6 +1,6 @@
 {
   "name": "react-native-lightbox-v2",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Images etc in Full Screen Lightbox Popovers for React Native",
   "main": "dist/Lightbox.js",
   "types": "dist/Lightbox.d.ts",
@@ -42,7 +42,7 @@
   "devDependencies": {
     "@babel/runtime": "7.7.4",
     "@types/react": "16.9.13",
-    "@types/react-native": "0.60.23",
+    "@types/react-native": "0.69.3",
     "react": "16.12.0",
     "react-native": "0.61.5",
     "typescript": "3.7.2"

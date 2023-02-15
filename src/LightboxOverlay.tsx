@@ -19,7 +19,7 @@ import { useGesture, IGestureProps, useNextTick } from "./hooks";
 
 type OmitedLightboxProps = Omit<
   LightboxProps,
-  "style" | "disabled" | "underlayColor" | "activeProps" | "renderContent"
+  "style" | "disabled" | "underlayColor" | "activeProps" | "renderContent" | "renderItem"
 >;
 
 export interface LightboxOverlayProps
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
 });
 
 const LightboxOverlay: React.FC<LightboxOverlayProps> = ({
-  useNativeDriver,
+  useNativeDriver = false,
   dragDismissThreshold,
   springConfig,
   isOpen,
@@ -301,10 +301,10 @@ const LightboxOverlay: React.FC<LightboxOverlayProps> = ({
 
   const content = (
     <Animated.View
-      style={[openStyle, dragStyle, animations]}
+      style={[openStyle, dragStyle, animations as any]}
       {...handlers.current}
     >
-      {children}
+      {children as any}
     </Animated.View>
   );
 

@@ -64,7 +64,7 @@ export const useGesture = ({
   longPressGapTimer = 2000,
   longPressCallback,
   // longPressToSaveEnable = false,
-  useNativeDriver,
+  useNativeDriver = false,
 }: IGestureProps): [GestureReturnFunction, AnimatedTransformStyle | undefined] => {
   // last tap timer
   const lastTapTimer = useRef<number>(0);

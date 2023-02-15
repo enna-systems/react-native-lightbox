@@ -7,7 +7,7 @@ const INIT_POSITION = { x: 0, y: 0 };
 // -------------------------  hooks  -------------------------
 export const useGesture = ({ doubleTapGapTimer = 500, doubleTapAnimationDuration = 100, doubleTapZoomEnabled = true, doubleTapCallback, doubleTapZoomToCenter, doubleTapMaxZoom = 2, doubleTapInitialScale = 1, doubleTapZoomStep = 0.5, UNSAFE_INNER_WIDTH__cropWidth = width, UNSAFE_INNER_WIDTH__cropHeight = height, longPressGapTimer = 2000, longPressCallback, 
 // longPressToSaveEnable = false,
-useNativeDriver, }) => {
+useNativeDriver = false, }) => {
     // last tap timer
     const lastTapTimer = useRef(0);
     // long press timer

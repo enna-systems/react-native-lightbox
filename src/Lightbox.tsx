@@ -34,6 +34,7 @@ export interface LightboxProps<T = any> extends IGestureProps {
   activeProps?: Record<string, T>;
   renderContent?: Func<T, JSX.Element>;
   renderHeader?: Func<T, JSX.Element>;
+  renderItem?: Func<T, JSX.Element>;
   didOpen?: Func<T, void>;
   onOpen?: Func<T, void>;
   willClose?: Func<T, void>;
@@ -58,6 +59,7 @@ const Lightbox: React.FC<LightboxProps> = ({
   disabled = false,
   renderContent,
   renderHeader,
+  renderItem,
   didOpen = noop,
   onOpen = noop,
   willClose = noop,
@@ -139,17 +141,27 @@ const Lightbox: React.FC<LightboxProps> = ({
     ...rest,
   });
 
-  return (
-    <View ref={_root} style={style} onLayout={onLayout}>
-      <Animated.View style={{ opacity: layoutOpacity.current }}>
-        <TouchableHighlight
+  const _renderItem = () => {
+    if (renderItem) {
+      return renderItem(open);
+    }
+
+    return (
+      <TouchableHighlight
           underlayColor={underlayColor}
           onPress={open}
           onLongPress={onLongPress}
           disabled={disabled}
         >
-          {children}
-        </TouchableHighlight>
+          {children as any}
+      </TouchableHighlight>
+    );
+  }
+
+  return (
+    <View ref={_root} style={style} onLayout={onLayout}>
+      <Animated.View style={{ opacity: layoutOpacity.current }}>
+        {_renderItem()}
       </Animated.View>
       {disabled ? null : <LightboxOverlay {...getOverlayProps()} />}
     </View>

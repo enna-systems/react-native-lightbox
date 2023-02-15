@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { Animated, Dimensions, PanResponder, Platform, StyleSheet, StatusBar, TouchableOpacity, Text, Modal, } from "react-native";
+import { Animated, Dimensions, PanResponder, Platform, StyleSheet, StatusBar, TouchableOpacity, Text, Modal, SafeAreaView, } from "react-native";
 import { useGesture, useNextTick } from "./hooks";
 const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get("window");
 const isIOS = Platform.OS === "ios";
@@ -16,6 +16,7 @@ const styles = StyleSheet.create({
         position: "absolute",
         flex: 1,
         justifyContent: "center",
+        alignItems: "center",
         // Android pan handlers crash without this declaration:
         backgroundColor: "transparent",
     },
@@ -41,7 +42,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.8,
     },
 });
-const LightboxOverlay = ({ useNativeDriver, dragDismissThreshold, springConfig, isOpen, onClose, willClose, didOpen, swipeToDismiss, origin, backgroundColor, renderHeader, modalProps, children, doubleTapZoomEnabled, doubleTapGapTimer, doubleTapCallback, doubleTapZoomToCenter, doubleTapMaxZoom, doubleTapZoomStep, doubleTapInitialScale, doubleTapAnimationDuration, longPressGapTimer, longPressCallback }) => {
+const LightboxOverlay = ({ useNativeDriver = false, dragDismissThreshold, springConfig, isOpen, onClose, willClose, didOpen, swipeToDismiss, origin, backgroundColor, renderHeader, modalProps, children, doubleTapZoomEnabled, doubleTapGapTimer, doubleTapCallback, doubleTapZoomToCenter, doubleTapMaxZoom, doubleTapZoomStep, doubleTapInitialScale, doubleTapAnimationDuration, longPressGapTimer, longPressCallback, }) => {
     const _panResponder = useRef();
     const pan = useRef(new Animated.Value(0));
     const openVal = useRef(new Animated.Value(0));
@@ -57,7 +58,7 @@ const LightboxOverlay = ({ useNativeDriver, dragDismissThreshold, springConfig, 
         doubleTapInitialScale,
         doubleTapAnimationDuration,
         longPressGapTimer,
-        longPressCallback
+        longPressCallback,
     });
     const [{ isAnimating, isPanning, target }, setState] = useState({
         isAnimating: false,
@@ -205,9 +206,11 @@ const LightboxOverlay = ({ useNativeDriver, dragDismissThreshold, springConfig, 
     ];
     const background = (<Animated.View style={[styles.background, { backgroundColor }, lightboxOpacityStyle]}></Animated.View>);
     const header = (<Animated.View style={[styles.header, lightboxOpacityStyle]}>
-      {renderHeader ? (renderHeader(close)) : (<TouchableOpacity onPress={close}>
-          <Text style={styles.closeButton}>×</Text>
-        </TouchableOpacity>)}
+      {renderHeader ? (renderHeader(close)) : (<SafeAreaView>
+          <TouchableOpacity onPress={close}>
+            <Text style={styles.closeButton}>×</Text>
+          </TouchableOpacity>
+        </SafeAreaView>)}
     </Animated.View>);
     const content = (<Animated.View style={[openStyle, dragStyle, animations]} {...handlers.current}>
       {children}

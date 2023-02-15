@@ -3,7 +3,7 @@ import { Animated, TouchableHighlight, View, } from "react-native";
 import LightboxOverlay from "./LightboxOverlay";
 import { useNextTick } from "./hooks";
 const noop = () => { };
-const Lightbox = ({ activeProps, swipeToDismiss = true, useNativeDriver = false, disabled = false, renderContent, renderHeader, didOpen = noop, onOpen = noop, willClose = noop, onClose = noop, onLongPress = noop, onLayout = noop, springConfig = { tension: 30, friction: 7 }, backgroundColor = "black", underlayColor, style, dragDismissThreshold = 150, children, modalProps = {}, ...rest }) => {
+const Lightbox = ({ activeProps, swipeToDismiss = true, useNativeDriver = false, disabled = false, renderContent, renderHeader, renderItem, didOpen = noop, onOpen = noop, willClose = noop, onClose = noop, onLongPress = noop, onLayout = noop, springConfig = { tension: 30, friction: 7 }, backgroundColor = "black", underlayColor, style, dragDismissThreshold = 150, children, modalProps = {}, ...rest }) => {
     const layoutOpacity = useRef(new Animated.Value(1));
     const _root = useRef(null);
     const closeNextTick = useNextTick(onClose);
@@ -60,11 +60,17 @@ const Lightbox = ({ activeProps, swipeToDismiss = true, useNativeDriver = false,
         modalProps,
         ...rest,
     });
+    const _renderItem = () => {
+        if (renderItem) {
+            return renderItem(open);
+        }
+        return (<TouchableHighlight underlayColor={underlayColor} onPress={open} onLongPress={onLongPress} disabled={disabled}>
+          {children}
+      </TouchableHighlight>);
+    };
     return (<View ref={_root} style={style} onLayout={onLayout}>
       <Animated.View style={{ opacity: layoutOpacity.current }}>
-        <TouchableHighlight underlayColor={underlayColor} onPress={open} onLongPress={onLongPress} disabled={disabled}>
-          {children}
-        </TouchableHighlight>
+        {_renderItem()}
       </Animated.View>
       {disabled ? null : <LightboxOverlay {...getOverlayProps()}/>}
     </View>);

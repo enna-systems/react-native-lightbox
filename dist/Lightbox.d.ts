@@ -16,6 +16,7 @@ export interface LightboxProps<T = any> extends IGestureProps {
     activeProps?: Record<string, T>;
     renderContent?: Func<T, JSX.Element>;
     renderHeader?: Func<T, JSX.Element>;
+    renderItem?: Func<T, JSX.Element>;
     didOpen?: Func<T, void>;
     onOpen?: Func<T, void>;
     willClose?: Func<T, void>;

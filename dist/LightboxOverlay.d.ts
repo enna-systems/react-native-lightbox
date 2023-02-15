@@ -1,7 +1,7 @@
 import React from "react";
 import { LightboxProps, IOrigin, ISpringConfig } from "./Lightbox";
 import { IGestureProps } from "./hooks";
-declare type OmitedLightboxProps = Omit<LightboxProps, "style" | "disabled" | "underlayColor" | "activeProps" | "renderContent">;
+declare type OmitedLightboxProps = Omit<LightboxProps, "style" | "disabled" | "underlayColor" | "activeProps" | "renderContent" | "renderItem">;
 export interface LightboxOverlayProps extends OmitedLightboxProps, IGestureProps {
     isOpen?: boolean;
     origin?: IOrigin;
