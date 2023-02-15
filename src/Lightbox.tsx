@@ -148,6 +148,7 @@ const Lightbox: React.FC<LightboxProps> = ({
 
     return (
       <TouchableHighlight
+          activeOpacity={1}
           underlayColor={underlayColor}
           onPress={open}
           onLongPress={onLongPress}
