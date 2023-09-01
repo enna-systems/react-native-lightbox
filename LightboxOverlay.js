@@ -2,59 +2,18 @@ import React, { useState, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
 import {
   Animated,
-  Dimensions,
   Modal,
   PanResponder,
   Platform,
   StatusBar,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 
-const WINDOW_HEIGHT = Dimensions.get("window").height;
-const WINDOW_WIDTH = Dimensions.get("window").width;
 const DRAG_DISMISS_THRESHOLD = 150;
 const isIOS = Platform.OS === "ios";
-
-const styles = StyleSheet.create({
-  background: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: WINDOW_WIDTH,
-    height: WINDOW_HEIGHT,
-  },
-  open: {
-    position: "absolute",
-    flex: 1,
-    justifyContent: "center",
-    // Android pan handlers crash without this declaration:
-    backgroundColor: "transparent",
-  },
-  header: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: WINDOW_WIDTH,
-    backgroundColor: "transparent",
-  },
-  closeButton: {
-    fontSize: 35,
-    color: "white",
-    lineHeight: 60,
-    width: 70,
-    textAlign: "center",
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowRadius: 1.5,
-    shadowColor: "black",
-    shadowOpacity: 0.8,
-  },
-});
 
 const LightboxOverlay = (props) => {
   const _panResponder = useRef();
@@ -68,6 +27,45 @@ const LightboxOverlay = (props) => {
     y: 0,
     opacity: 1,
   });
+  const WINDOW_HEIGHT = useWindowDimensions().height;
+  const WINDOW_WIDTH = useWindowDimensions().width;
+  const styles = {
+    background: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: WINDOW_WIDTH,
+      height: WINDOW_HEIGHT,
+    },
+    open: {
+      position: "absolute",
+      flex: 1,
+      justifyContent: "center",
+      // Android pan handlers crash without this declaration:
+      backgroundColor: "transparent",
+    },
+    header: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: WINDOW_WIDTH,
+      backgroundColor: "transparent",
+    },
+    closeButton: {
+      fontSize: 35,
+      color: "white",
+      lineHeight: 60,
+      width: 70,
+      textAlign: "center",
+      shadowOffset: {
+        width: 0,
+        height: 0,
+      },
+      shadowRadius: 1.5,
+      shadowColor: "black",
+      shadowOpacity: 0.8,
+    },
+  };
 
   useEffect(() => {
     _panResponder.current = PanResponder.create({
