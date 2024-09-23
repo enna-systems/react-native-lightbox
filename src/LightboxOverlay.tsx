@@ -116,7 +116,8 @@ const LightboxOverlay: React.FC<LightboxOverlayProps> = ({
     longPressGapTimer,
     longPressCallback,
   });
-
+  const [deviceWidth, setDeviceWidth] = useState(Dimensions.get('window').width);
+  const [deviceHeight, setDeviceHeight] = useState(Dimensions.get('window').height);
   const [{ isAnimating, isPanning, target }, setState] = useState({
     isAnimating: false,
     isPanning: false,
@@ -224,6 +225,19 @@ const LightboxOverlay: React.FC<LightboxOverlayProps> = ({
       },
     });
   };
+  useEffect(() => {
+    const onChange = ({ window }) => {
+      setDeviceWidth(window.width);
+      setDeviceHeight(window.height);
+    };
+    const removeEventListener = () => {
+      if (Dimensions.removeEventListener) {
+        Dimensions.removeEventListener('change', onChange);
+      }
+    };
+    Dimensions.addEventListener('change', onChange);
+    return removeEventListener;
+  }, []);
 
   useEffect(() => {
     initPanResponder();
@@ -270,11 +284,11 @@ const LightboxOverlay: React.FC<LightboxOverlayProps> = ({
       }),
       width: openVal.current.interpolate({
         inputRange: [0, 1],
-        outputRange: [origin!.width, WINDOW_WIDTH],
+        outputRange: [origin!.width, deviceWidth],
       }),
       height: openVal.current.interpolate({
         inputRange: [0, 1],
-        outputRange: [origin!.height, WINDOW_HEIGHT],
+        outputRange: [origin!.height, deviceHeight],
       }),
     },
   ];

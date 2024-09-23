@@ -60,6 +60,8 @@ const LightboxOverlay = ({ useNativeDriver = false, dragDismissThreshold, spring
         longPressGapTimer,
         longPressCallback,
     });
+    const [deviceWidth, setDeviceWidth] = useState(Dimensions.get('window').width);
+    const [deviceHeight, setDeviceHeight] = useState(Dimensions.get('window').height);
     const [{ isAnimating, isPanning, target }, setState] = useState({
         isAnimating: false,
         isPanning: false,
@@ -157,6 +159,19 @@ const LightboxOverlay = ({ useNativeDriver = false, dragDismissThreshold, spring
         });
     };
     useEffect(() => {
+        const onChange = ({ window }) => {
+            setDeviceWidth(window.width);
+            setDeviceHeight(window.height);
+        };
+        const removeEventListener = () => {
+            if (Dimensions.removeEventListener) {
+                Dimensions.removeEventListener('change', onChange);
+            }
+        };
+        Dimensions.addEventListener('change', onChange);
+        return removeEventListener;
+    }, []);
+    useEffect(() => {
         initPanResponder();
     }, [useNativeDriver, isAnimating]);
     useEffect(() => {
@@ -196,11 +211,11 @@ const LightboxOverlay = ({ useNativeDriver = false, dragDismissThreshold, spring
             }),
             width: openVal.current.interpolate({
                 inputRange: [0, 1],
-                outputRange: [origin.width, WINDOW_WIDTH],
+                outputRange: [origin.width, deviceWidth],
             }),
             height: openVal.current.interpolate({
                 inputRange: [0, 1],
-                outputRange: [origin.height, WINDOW_HEIGHT],
+                outputRange: [origin.height, deviceHeight],
             }),
         },
     ];
