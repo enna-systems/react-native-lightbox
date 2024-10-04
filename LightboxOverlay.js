@@ -36,7 +36,7 @@ const LightboxOverlay = (props) => {
   const doubleTapGapTimer = 300;
   const doubleTapAnimationDuration = 100;
   const doubleTapZoomEnabled = true;
-  const doubleTapCallback = () => {};
+  const doubleTapCallback = props.doubleTapCallback;
   const doubleTapZoomToCenter = false;
   const doubleTapMaxZoom = 3;
   const doubleTapInitialScale = 1;
@@ -198,16 +198,18 @@ const LightboxOverlay = (props) => {
     if (nowTapTimer - lastTapTimer.current < doubleTapGapTimer) {
       isDoubleTaped.current = true;
       lastTapTimer.current = 0;
-      // double tap callback
-      if (doubleTapCallback) doubleTapCallback(e, gestureState);
-      // double tap zoom
-      if (!doubleTapZoomEnabled) return;
       // next scale
       doubleTapScale.current =
         doubleTapScale.current + doubleTapInitialScale * doubleTapZoomStep;
       if (doubleTapScale.current > doubleTapMaxZoom) {
         doubleTapScale.current = doubleTapInitialScale;
       }
+      // double tap callback
+      if (doubleTapCallback) {
+        doubleTapCallback(e, gestureState, doubleTapScale.current);
+      }
+      // double tap zoom
+      if (!doubleTapZoomEnabled) return;
       coordinates.current = {
         x: e.nativeEvent.changedTouches[0].pageX,
         y: e.nativeEvent.changedTouches[0].pageY,
@@ -381,6 +383,7 @@ LightboxOverlay.propTypes = {
   renderHeader: PropTypes.func,
   onOpen: PropTypes.func,
   onClose: PropTypes.func,
+  doubleTapCallback: PropTypes.func,
   willClose: PropTypes.func,
   swipeToDismiss: PropTypes.bool,
   useNativeDriver: PropTypes.bool,

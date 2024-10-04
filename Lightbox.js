@@ -1,9 +1,4 @@
-import React, {
-  Children,
-  cloneElement,
-  useState,
-  useRef,
-} from "react";
+import React, { Children, cloneElement, useState, useRef } from "react";
 import { Animated, TouchableOpacity, View } from "react-native";
 import PropTypes from "prop-types";
 import LightboxOverlay from "./LightboxOverlay";
@@ -40,6 +35,7 @@ const Lightbox = (props) => {
     didOpen: props.didOpen,
     willClose: props.willClose,
     onClose: onClose,
+    doubleTapCallback: props.doubleTapCallback,
   });
 
   open = () => {
@@ -122,6 +118,7 @@ Lightbox.propTypes = {
   onOpen: PropTypes.func,
   willClose: PropTypes.func,
   onClose: PropTypes.func,
+  doubleTapCallback: PropTypes.func,
   onLongPress: PropTypes.func,
   onLayout: PropTypes.func,
   springConfig: PropTypes.shape({
@@ -138,7 +135,8 @@ Lightbox.defaultProps = {
   willClose: () => {},
   onClose: () => {},
   onLongPress: null, // in andriod mobile, e.g HuaWei Nova5 Plus+, onPress will not work well
-  onLayout: () => {}
+  onLayout: () => {},
+  doubleTapCallback: () => {},
 };
 
 export default Lightbox;
