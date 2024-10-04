@@ -191,7 +191,6 @@ const LightboxOverlay = (props) => {
   };
 
   const onDoubleTap = (e, gestureState) => {
-    console.log("onDoubleTap", gestureState);
     if (gestureState.numberActiveTouches > 1) return;
 
     const nowTapTimer = now();
@@ -219,8 +218,6 @@ const LightboxOverlay = (props) => {
           y: UNSAFE_INNER_WIDTH__cropHeight / 2,
         };
       }
-      console.log("coor", coordinates.current);
-      console.log("doubleTapScale", doubleTapScale.current);
       Animated.parallel([
         Animated.timing(animatedScale.current, {
           toValue: doubleTapScale.current,
