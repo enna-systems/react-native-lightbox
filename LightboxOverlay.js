@@ -12,6 +12,8 @@ import {
   useWindowDimensions,
 } from "react-native";
 
+const now = () => +new Date();
+const INIT_POSITION = { x: 0, y: 0 };
 const DRAG_DISMISS_THRESHOLD = 150;
 const isIOS = Platform.OS === "ios";
 
@@ -27,8 +29,37 @@ const LightboxOverlay = (props) => {
     y: 0,
     opacity: 1,
   });
+
   const WINDOW_HEIGHT = useWindowDimensions().height;
   const WINDOW_WIDTH = useWindowDimensions().width;
+
+  const doubleTapGapTimer = 300;
+  const doubleTapAnimationDuration = 100;
+  const doubleTapZoomEnabled = true;
+  const doubleTapCallback = () => {};
+  const doubleTapZoomToCenter = false;
+  const doubleTapMaxZoom = 3;
+  const doubleTapInitialScale = 1;
+  const doubleTapZoomStep = 2;
+  const UNSAFE_INNER_WIDTH__cropWidth = WINDOW_WIDTH;
+  const UNSAFE_INNER_WIDTH__cropHeight = WINDOW_HEIGHT;
+
+  const lastTapTimer = useRef(0);
+  const isDoubleTaped = useRef(false);
+
+  const useNativeDriver = props.useNativeDriver;
+
+  // double tap coordinates
+  const coordinates = useRef(INIT_POSITION);
+  // double tap scale
+  const doubleTapScale = useRef(doubleTapInitialScale);
+  // animated
+  const animatedScale = useRef(new Animated.Value(1));
+  const animatedPositionX = useRef(new Animated.Value(INIT_POSITION.x));
+  const animatedPositionY = useRef(new Animated.Value(INIT_POSITION.y));
+  // animation style to export
+  const animations = useRef();
+
   const styles = {
     background: {
       position: "absolute",
@@ -76,14 +107,19 @@ const LightboxOverlay = (props) => {
       onMoveShouldSetPanResponderCapture: (evt, gestureState) => !isAnimating,
 
       onPanResponderGrant: (evt, gestureState) => {
+        isDoubleTaped.current = false;
         pan.current.setValue(0);
         setIsPanning(true);
+        onDoubleTap(evt, gestureState);
       },
       onPanResponderMove: Animated.event([null, { dy: pan.current }], {
         useNativeDriver: props.useNativeDriver,
       }),
       onPanResponderTerminationRequest: (evt, gestureState) => true,
       onPanResponderRelease: (evt, gestureState) => {
+        if (isDoubleTaped.current) {
+          return;
+        }
         if (Math.abs(gestureState.dy) > DRAG_DISMISS_THRESHOLD) {
           setIsPanning(false);
           setTarget({
@@ -140,6 +176,7 @@ const LightboxOverlay = (props) => {
       StatusBar.setHidden(false, "fade");
     }
 
+    reset();
     setIsAnimating(true);
     Animated.spring(openVal.current, {
       toValue: 0,
@@ -151,6 +188,87 @@ const LightboxOverlay = (props) => {
 
     // TODO delay when close
     setTimeout(props.onClose, 200);
+  };
+
+  const onDoubleTap = (e, gestureState) => {
+    console.log("onDoubleTap", gestureState);
+    if (gestureState.numberActiveTouches > 1) return;
+
+    const nowTapTimer = now();
+    // double tap
+    if (nowTapTimer - lastTapTimer.current < doubleTapGapTimer) {
+      isDoubleTaped.current = true;
+      lastTapTimer.current = 0;
+      // double tap callback
+      if (doubleTapCallback) doubleTapCallback(e, gestureState);
+      // double tap zoom
+      if (!doubleTapZoomEnabled) return;
+      // next scale
+      doubleTapScale.current =
+        doubleTapScale.current + doubleTapInitialScale * doubleTapZoomStep;
+      if (doubleTapScale.current > doubleTapMaxZoom) {
+        doubleTapScale.current = doubleTapInitialScale;
+      }
+      coordinates.current = {
+        x: e.nativeEvent.changedTouches[0].pageX,
+        y: e.nativeEvent.changedTouches[0].pageY,
+      };
+      if (doubleTapZoomToCenter) {
+        coordinates.current = {
+          x: UNSAFE_INNER_WIDTH__cropWidth / 2,
+          y: UNSAFE_INNER_WIDTH__cropHeight / 2,
+        };
+      }
+      console.log("coor", coordinates.current);
+      console.log("doubleTapScale", doubleTapScale.current);
+      Animated.parallel([
+        Animated.timing(animatedScale.current, {
+          toValue: doubleTapScale.current,
+          duration: doubleTapAnimationDuration,
+          useNativeDriver,
+        }),
+        Animated.timing(animatedPositionX.current, {
+          toValue:
+            ((UNSAFE_INNER_WIDTH__cropWidth / 2 - coordinates.current.x) *
+              (doubleTapScale.current - doubleTapInitialScale)) /
+            doubleTapScale.current,
+          duration: doubleTapAnimationDuration,
+          useNativeDriver,
+        }),
+        Animated.timing(animatedPositionY.current, {
+          toValue:
+            ((UNSAFE_INNER_WIDTH__cropHeight / 2 - coordinates.current.y) *
+              (doubleTapScale.current - doubleTapInitialScale)) /
+            doubleTapScale.current,
+          duration: doubleTapAnimationDuration,
+          useNativeDriver,
+        }),
+      ]).start();
+      animations.current = {
+        transform: [
+          {
+            scale: animatedScale.current,
+          },
+          {
+            translateX: animatedPositionX.current,
+          },
+          {
+            translateY: animatedPositionY.current,
+          },
+        ],
+      };
+    } else {
+      lastTapTimer.current = nowTapTimer;
+    }
+  };
+
+  // reset
+  const reset = () => {
+    // double tap animations reset
+    animatedScale.current.setValue(doubleTapInitialScale);
+    animatedPositionX.current.setValue(INIT_POSITION.x);
+    animatedPositionY.current.setValue(INIT_POSITION.y);
+    animations.current = void 0;
   };
 
   const lightboxOpacityStyle = {
@@ -185,10 +303,7 @@ const LightboxOverlay = (props) => {
       }),
       top: openVal.current.interpolate({
         inputRange: [0, 1],
-        outputRange: [
-          props.origin.y,
-          target.y,
-        ],
+        outputRange: [props.origin.y, target.y],
       }),
       width: openVal.current.interpolate({
         inputRange: [0, 1],
@@ -222,7 +337,10 @@ const LightboxOverlay = (props) => {
     </Animated.View>
   );
   const content = (
-    <Animated.View style={[openStyle, dragStyle]} {...handlers}>
+    <Animated.View
+      style={[openStyle, dragStyle, animations.current]}
+      {...handlers}
+    >
       {props.children}
     </Animated.View>
   );
@@ -268,13 +386,13 @@ LightboxOverlay.propTypes = {
   onClose: PropTypes.func,
   willClose: PropTypes.func,
   swipeToDismiss: PropTypes.bool,
-  useNativeDriver: PropTypes.bool
+  useNativeDriver: PropTypes.bool,
 };
 
 LightboxOverlay.defaultProps = {
   springConfig: { tension: 30, friction: 7 },
   backgroundColor: "black",
-  useNativeDriver: false
+  useNativeDriver: false,
 };
 
 export default LightboxOverlay;
