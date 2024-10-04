@@ -36,6 +36,7 @@ const Lightbox = (props) => {
     willClose: props.willClose,
     onClose: onClose,
     doubleTapCallback: props.doubleTapCallback,
+    doubleTapMaxZoom: props.doubleTapMaxZoom,
   });
 
   open = () => {
@@ -119,6 +120,7 @@ Lightbox.propTypes = {
   willClose: PropTypes.func,
   onClose: PropTypes.func,
   doubleTapCallback: PropTypes.func,
+  doubleTapMaxZoom: PropTypes.number,
   onLongPress: PropTypes.func,
   onLayout: PropTypes.func,
   springConfig: PropTypes.shape({
@@ -137,6 +139,7 @@ Lightbox.defaultProps = {
   onLongPress: null, // in andriod mobile, e.g HuaWei Nova5 Plus+, onPress will not work well
   onLayout: () => {},
   doubleTapCallback: () => {},
+  doubleTapMaxZoom: 2,
 };
 
 export default Lightbox;

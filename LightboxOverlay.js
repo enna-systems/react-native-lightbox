@@ -38,9 +38,9 @@ const LightboxOverlay = (props) => {
   const doubleTapZoomEnabled = true;
   const doubleTapCallback = props.doubleTapCallback;
   const doubleTapZoomToCenter = false;
-  const doubleTapMaxZoom = 3;
+  const doubleTapMaxZoom = props.doubleTapMaxZoom || 2;
   const doubleTapInitialScale = 1;
-  const doubleTapZoomStep = 2;
+  const doubleTapZoomStep = props.doubleTapMaxZoom - 1 || 1;
   const UNSAFE_INNER_WIDTH__cropWidth = WINDOW_WIDTH;
   const UNSAFE_INNER_WIDTH__cropHeight = WINDOW_HEIGHT;
 
@@ -206,7 +206,7 @@ const LightboxOverlay = (props) => {
       }
       // double tap callback
       if (doubleTapCallback) {
-        doubleTapCallback(e, gestureState, doubleTapScale.current);
+        doubleTapCallback(doubleTapScale.current);
       }
       // double tap zoom
       if (!doubleTapZoomEnabled) return;
@@ -383,6 +383,7 @@ LightboxOverlay.propTypes = {
   renderHeader: PropTypes.func,
   onOpen: PropTypes.func,
   onClose: PropTypes.func,
+  doubleTapMaxZoom: PropTypes.number,
   doubleTapCallback: PropTypes.func,
   willClose: PropTypes.func,
   swipeToDismiss: PropTypes.bool,
