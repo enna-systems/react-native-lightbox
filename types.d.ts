@@ -17,7 +17,7 @@ declare module 'react-native-lightbox-v2' {
     style?: StyleProp<ViewStyle>
     onLongPress?: (...args: any) => void
     children: React.ReactNode,
-    doubleTapCallback?: () => void
+    doubleTapCallback?: (scale: number) => void
     doubleTapMaxZoom?: number
     testID?: string
   }
