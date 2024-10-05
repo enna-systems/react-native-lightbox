@@ -20,7 +20,7 @@ const Lightbox = ({
   willClose = () => {},
   onClose = () => {},
   doubleTapCallback = () => {},
-  doubleTapMaxZoom = 2,
+  doubleTapMaxZoom = 1, //disabled by default
   onLongPress = null,
   onLayout = () => {},
   springConfig = { tension: 30, friction: 7 },
