@@ -5,13 +5,7 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import {
-  Animated,
-  TouchableOpacity,
-  View,
-  StyleSheet,
-  Easing,
-} from "react-native";
+import { Animated, TouchableOpacity, View, StyleSheet } from "react-native";
 import PropTypes from "prop-types";
 import LightboxOverlay from "./LightboxOverlay";
 
@@ -34,6 +28,7 @@ const Lightbox = ({
   navigator,
   children,
   style,
+  testID,
 }) => {
   const layoutOpacity = useRef(new Animated.Value(1));
   const rootRef = useRef(null);
@@ -130,7 +125,7 @@ const Lightbox = ({
   );
 
   return (
-    <View ref={rootRef} style={style} onLayout={onLayout}>
+    <View testID={testID} ref={rootRef} style={style} onLayout={onLayout}>
       <Animated.View
         style={[styles.container, { opacity: layoutOpacity.current }]}
       >
@@ -170,6 +165,7 @@ Lightbox.propTypes = {
   navigator: PropTypes.object,
   children: PropTypes.node.isRequired,
   style: PropTypes.oneOfType([PropTypes.object, PropTypes.array]),
+  testID: PropTypes.string,
 };
 
 const styles = StyleSheet.create({

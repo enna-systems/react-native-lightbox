@@ -16,7 +16,10 @@ declare module 'react-native-lightbox-v2' {
     swipeToDismiss?: boolean
     style?: StyleProp<ViewStyle>
     onLongPress?: (...args: any) => void
-    children: React.ReactNode
+    children: React.ReactNode,
+    doubleTapCallBack?: () => void
+    doubleTapMaxZoom?: number
+    testID?: string
   }
 
   const Lightbox: React.FC<LightboxProps>
