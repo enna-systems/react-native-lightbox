@@ -3,6 +3,7 @@
   "version": "0.8.8",
   "description": "Images etc in Full Screen Lightbox Popovers for React Native",
   "main": "Lightbox.js",
+  "types": "types.d.ts",
   "scripts": {
     "test": "flow check"
   },

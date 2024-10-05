@@ -1,4 +1,5 @@
 declare module 'react-native-lightbox-v2' {
+  import React from 'react'
   import { Animated, StyleProp, ViewStyle } from 'react-native'
 
   interface LightboxProps {
@@ -15,6 +16,7 @@ declare module 'react-native-lightbox-v2' {
     swipeToDismiss?: boolean
     style?: StyleProp<ViewStyle>
     onLongPress?: (...args: any) => void
+    children: React.ReactNode
   }
 
   const Lightbox: React.FC<LightboxProps>
