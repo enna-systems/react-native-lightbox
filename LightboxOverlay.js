@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import {
   Animated,
@@ -6,6 +6,7 @@ import {
   PanResponder,
   Platform,
   StatusBar,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -15,10 +16,30 @@ import {
 const now = () => +new Date();
 const INIT_POSITION = { x: 0, y: 0 };
 const DRAG_DISMISS_THRESHOLD = 150;
+const DOUBLE_TAP_GAP_TIMER = 300;
+const DOUBLE_TAP_ANIMATION_DURATION = 100;
+const DOUBLE_TAP_ZOOM_ENABLED = true;
+const DOUBLE_TAP_ZOOM_TO_CENTER = false;
+const DOUBLE_TAP_INITIAL_SCALE = 1;
 const isIOS = Platform.OS === "ios";
 
-const LightboxOverlay = (props) => {
-  const _panResponder = useRef();
+const LightboxOverlay = ({
+  origin,
+  springConfig = { tension: 30, friction: 7 },
+  backgroundColor = "black",
+  isOpen,
+  renderHeader,
+  onOpen,
+  onClose,
+  doubleTapMaxZoom = 2,
+  doubleTapCallback = () => {},
+  willClose = () => {},
+  swipeToDismiss,
+  useNativeDriver = false,
+  children,
+  navigator,
+  didOpen = () => {},
+}) => {
   const pan = useRef(new Animated.Value(0));
   const openVal = useRef(new Animated.Value(0));
 
@@ -30,37 +51,28 @@ const LightboxOverlay = (props) => {
     opacity: 1,
   });
 
-  const WINDOW_HEIGHT = useWindowDimensions().height;
-  const WINDOW_WIDTH = useWindowDimensions().width;
+  const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = useWindowDimensions();
 
-  const doubleTapGapTimer = 300;
-  const doubleTapAnimationDuration = 100;
-  const doubleTapZoomEnabled = true;
-  const doubleTapCallback = props.doubleTapCallback;
-  const doubleTapZoomToCenter = false;
-  const doubleTapMaxZoom = props.doubleTapMaxZoom || 2;
-  const doubleTapInitialScale = 1;
-  const doubleTapZoomStep = props.doubleTapMaxZoom - 1 || 1;
-  const UNSAFE_INNER_WIDTH__cropWidth = WINDOW_WIDTH;
-  const UNSAFE_INNER_WIDTH__cropHeight = WINDOW_HEIGHT;
+  const doubleTapZoomStep = doubleTapMaxZoom - 1 || 1;
+  const CROP_WIDTH = WINDOW_WIDTH;
+  const CROP_HEIGHT = WINDOW_HEIGHT;
 
   const lastTapTimer = useRef(0);
   const isDoubleTaped = useRef(false);
 
-  const useNativeDriver = props.useNativeDriver;
-
-  // double tap coordinates
+  // Double-tap coordinates and scale
   const coordinates = useRef(INIT_POSITION);
-  // double tap scale
-  const doubleTapScale = useRef(doubleTapInitialScale);
-  // animated
+  const doubleTapScale = useRef(DOUBLE_TAP_INITIAL_SCALE);
+
+  // Animated values for scale and position
   const animatedScale = useRef(new Animated.Value(1));
   const animatedPositionX = useRef(new Animated.Value(INIT_POSITION.x));
   const animatedPositionY = useRef(new Animated.Value(INIT_POSITION.y));
-  // animation style to export
+
+  // Animation style to apply
   const animations = useRef();
 
-  const styles = {
+  const styles = StyleSheet.create({
     background: {
       position: "absolute",
       top: 0,
@@ -72,7 +84,6 @@ const LightboxOverlay = (props) => {
       position: "absolute",
       flex: 1,
       justifyContent: "center",
-      // Android pan handlers crash without this declaration:
       backgroundColor: "transparent",
     },
     header: {
@@ -88,23 +99,154 @@ const LightboxOverlay = (props) => {
       lineHeight: 60,
       width: 70,
       textAlign: "center",
-      shadowOffset: {
-        width: 0,
-        height: 0,
-      },
+      shadowOffset: { width: 0, height: 0 },
       shadowRadius: 1.5,
       shadowColor: "black",
       shadowOpacity: 0.8,
     },
-  };
+  });
 
+  // Reset function
+  const reset = useCallback(() => {
+    animatedScale.current.setValue(DOUBLE_TAP_INITIAL_SCALE);
+    animatedPositionX.current.setValue(INIT_POSITION.x);
+    animatedPositionY.current.setValue(INIT_POSITION.y);
+    animations.current = undefined;
+  }, []);
+
+  // Open function
+  const open = useCallback(() => {
+    if (isIOS) {
+      StatusBar.setHidden(true, "fade");
+    }
+
+    pan.current.setValue(0);
+    setIsAnimating(true);
+    setTarget({ x: 0, y: 0, opacity: 1 });
+
+    Animated.spring(openVal.current, {
+      toValue: 1,
+      ...springConfig,
+      useNativeDriver,
+    }).start(() => {
+      setIsAnimating(false);
+      didOpen();
+    });
+  }, [didOpen, isIOS, springConfig, useNativeDriver]);
+
+  // Close function
+  const close = useCallback(() => {
+    willClose();
+    if (isIOS) {
+      StatusBar.setHidden(false, "fade");
+    }
+
+    reset();
+    setIsAnimating(true);
+
+    Animated.spring(openVal.current, {
+      toValue: 0,
+      ...springConfig,
+      useNativeDriver,
+    }).start(() => {
+      setIsAnimating(false);
+    });
+    setTimeout(onClose, 200);
+  }, [onClose, reset, springConfig, useNativeDriver, willClose]);
+
+  // Double-tap handler
+  const onDoubleTap = useCallback(
+    (e, gestureState) => {
+      if (gestureState.numberActiveTouches > 1) return;
+
+      const nowTapTimer = now();
+
+      if (nowTapTimer - lastTapTimer.current < DOUBLE_TAP_GAP_TIMER) {
+        isDoubleTaped.current = true;
+        lastTapTimer.current = 0;
+
+        // Update scale
+        doubleTapScale.current += DOUBLE_TAP_INITIAL_SCALE * doubleTapZoomStep;
+        if (doubleTapScale.current > doubleTapMaxZoom) {
+          doubleTapScale.current = DOUBLE_TAP_INITIAL_SCALE;
+        }
+
+        // Callback
+        doubleTapCallback(doubleTapScale.current);
+
+        if (!DOUBLE_TAP_ZOOM_ENABLED) return;
+
+        coordinates.current = {
+          x: e.nativeEvent.changedTouches[0].pageX,
+          y: e.nativeEvent.changedTouches[0].pageY,
+        };
+
+        if (DOUBLE_TAP_ZOOM_TO_CENTER) {
+          coordinates.current = {
+            x: CROP_WIDTH / 2,
+            y: CROP_HEIGHT / 2,
+          };
+        }
+
+        Animated.parallel([
+          Animated.timing(animatedScale.current, {
+            toValue: doubleTapScale.current,
+            duration: DOUBLE_TAP_ANIMATION_DURATION,
+            useNativeDriver,
+          }),
+          Animated.timing(animatedPositionX.current, {
+            toValue:
+              ((CROP_WIDTH / 2 - coordinates.current.x) *
+                (doubleTapScale.current - DOUBLE_TAP_INITIAL_SCALE)) /
+              doubleTapScale.current,
+            duration: DOUBLE_TAP_ANIMATION_DURATION,
+            useNativeDriver,
+          }),
+          Animated.timing(animatedPositionY.current, {
+            toValue:
+              ((CROP_HEIGHT / 2 - coordinates.current.y) *
+                (doubleTapScale.current - DOUBLE_TAP_INITIAL_SCALE)) /
+              doubleTapScale.current,
+            duration: DOUBLE_TAP_ANIMATION_DURATION,
+            useNativeDriver,
+          }),
+        ]).start();
+
+        animations.current = {
+          transform: [
+            { scale: animatedScale.current },
+            { translateX: animatedPositionX.current },
+            { translateY: animatedPositionY.current },
+          ],
+        };
+      } else {
+        lastTapTimer.current = nowTapTimer;
+      }
+    },
+    [
+      doubleTapCallback,
+      doubleTapMaxZoom,
+      doubleTapZoomStep,
+      useNativeDriver,
+      CROP_WIDTH,
+      CROP_HEIGHT,
+    ]
+  );
+
+  // Open when `isOpen` changes
   useEffect(() => {
-    _panResponder.current = PanResponder.create({
-      // Ask to be the responder:
-      onStartShouldSetPanResponder: (evt, gestureState) => !isAnimating,
-      onStartShouldSetPanResponderCapture: (evt, gestureState) => !isAnimating,
-      onMoveShouldSetPanResponder: (evt, gestureState) => !isAnimating,
-      onMoveShouldSetPanResponderCapture: (evt, gestureState) => !isAnimating,
+    if (isOpen) {
+      open();
+    }
+  }, [isOpen, open]);
+
+  // PanResponder setup
+  const _panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !isAnimating,
+      onStartShouldSetPanResponderCapture: () => !isAnimating,
+      onMoveShouldSetPanResponder: () => !isAnimating,
+      onMoveShouldSetPanResponderCapture: () => !isAnimating,
 
       onPanResponderGrant: (evt, gestureState) => {
         isDoubleTaped.current = false;
@@ -113,13 +255,12 @@ const LightboxOverlay = (props) => {
         onDoubleTap(evt, gestureState);
       },
       onPanResponderMove: Animated.event([null, { dy: pan.current }], {
-        useNativeDriver: props.useNativeDriver,
+        useNativeDriver,
       }),
-      onPanResponderTerminationRequest: (evt, gestureState) => true,
+      onPanResponderTerminationRequest: () => true,
       onPanResponderRelease: (evt, gestureState) => {
-        if (isDoubleTaped.current) {
-          return;
-        }
+        if (isDoubleTaped.current) return;
+
         if (Math.abs(gestureState.dy) > DRAG_DISMISS_THRESHOLD) {
           setIsPanning(false);
           setTarget({
@@ -127,149 +268,19 @@ const LightboxOverlay = (props) => {
             x: gestureState.dx,
             opacity: 1 - Math.abs(gestureState.dy / WINDOW_HEIGHT),
           });
-
           close();
         } else {
           Animated.spring(pan.current, {
             toValue: 0,
-            ...props.springConfig,
-            useNativeDriver: props.useNativeDriver,
+            ...springConfig,
+            useNativeDriver,
           }).start(() => setIsPanning(false));
         }
       },
-    });
-  }, [props.useNativeDriver]);
+    })
+  );
 
-  useEffect(() => {
-    if (props.isOpen) {
-      open();
-    }
-  }, [props.isOpen]);
-
-  open = () => {
-    if (isIOS) {
-      StatusBar.setHidden(true, "fade");
-    }
-
-    pan.current.setValue(0);
-
-    setIsAnimating(true);
-    setTarget({
-      x: 0,
-      y: 0,
-      opacity: 1,
-    });
-
-    Animated.spring(openVal.current, {
-      toValue: 1,
-      ...props.springConfig,
-      useNativeDriver: props.useNativeDriver,
-    }).start(() => {
-      setIsAnimating(false);
-      props.didOpen();
-    });
-  };
-
-  close = () => {
-    props.willClose();
-    if (isIOS) {
-      StatusBar.setHidden(false, "fade");
-    }
-
-    reset();
-    setIsAnimating(true);
-    Animated.spring(openVal.current, {
-      toValue: 0,
-      ...props.springConfig,
-      useNativeDriver: props.useNativeDriver,
-    }).start(() => {
-      setIsAnimating(false);
-    });
-
-    // TODO delay when close
-    setTimeout(props.onClose, 200);
-  };
-
-  const onDoubleTap = (e, gestureState) => {
-    if (gestureState.numberActiveTouches > 1) return;
-
-    const nowTapTimer = now();
-    // double tap
-    if (nowTapTimer - lastTapTimer.current < doubleTapGapTimer) {
-      isDoubleTaped.current = true;
-      lastTapTimer.current = 0;
-      // next scale
-      doubleTapScale.current =
-        doubleTapScale.current + doubleTapInitialScale * doubleTapZoomStep;
-      if (doubleTapScale.current > doubleTapMaxZoom) {
-        doubleTapScale.current = doubleTapInitialScale;
-      }
-      // double tap callback
-      if (doubleTapCallback) {
-        doubleTapCallback(doubleTapScale.current);
-      }
-      // double tap zoom
-      if (!doubleTapZoomEnabled) return;
-      coordinates.current = {
-        x: e.nativeEvent.changedTouches[0].pageX,
-        y: e.nativeEvent.changedTouches[0].pageY,
-      };
-      if (doubleTapZoomToCenter) {
-        coordinates.current = {
-          x: UNSAFE_INNER_WIDTH__cropWidth / 2,
-          y: UNSAFE_INNER_WIDTH__cropHeight / 2,
-        };
-      }
-      Animated.parallel([
-        Animated.timing(animatedScale.current, {
-          toValue: doubleTapScale.current,
-          duration: doubleTapAnimationDuration,
-          useNativeDriver,
-        }),
-        Animated.timing(animatedPositionX.current, {
-          toValue:
-            ((UNSAFE_INNER_WIDTH__cropWidth / 2 - coordinates.current.x) *
-              (doubleTapScale.current - doubleTapInitialScale)) /
-            doubleTapScale.current,
-          duration: doubleTapAnimationDuration,
-          useNativeDriver,
-        }),
-        Animated.timing(animatedPositionY.current, {
-          toValue:
-            ((UNSAFE_INNER_WIDTH__cropHeight / 2 - coordinates.current.y) *
-              (doubleTapScale.current - doubleTapInitialScale)) /
-            doubleTapScale.current,
-          duration: doubleTapAnimationDuration,
-          useNativeDriver,
-        }),
-      ]).start();
-      animations.current = {
-        transform: [
-          {
-            scale: animatedScale.current,
-          },
-          {
-            translateX: animatedPositionX.current,
-          },
-          {
-            translateY: animatedPositionY.current,
-          },
-        ],
-      };
-    } else {
-      lastTapTimer.current = nowTapTimer;
-    }
-  };
-
-  // reset
-  const reset = () => {
-    // double tap animations reset
-    animatedScale.current.setValue(doubleTapInitialScale);
-    animatedPositionX.current.setValue(INIT_POSITION.x);
-    animatedPositionY.current.setValue(INIT_POSITION.y);
-    animations.current = void 0;
-  };
-
+  // Lightbox opacity style
   const lightboxOpacityStyle = {
     opacity: openVal.current.interpolate({
       inputRange: [0, 1],
@@ -277,57 +288,58 @@ const LightboxOverlay = (props) => {
     }),
   };
 
-  let handlers;
-  if (props.swipeToDismiss && _panResponder.current) {
-    handlers = _panResponder.current.panHandlers;
-  }
+  // Handlers for pan gestures
+  let handlers = swipeToDismiss ? _panResponder.current.panHandlers : {};
 
-  let dragStyle;
+  // Drag style for panning
+  const dragStyle = isPanning
+    ? {
+        top: pan.current,
+      }
+    : {};
+
   if (isPanning) {
-    dragStyle = {
-      top: pan.current,
-    };
     lightboxOpacityStyle.opacity = pan.current.interpolate({
       inputRange: [-WINDOW_HEIGHT, 0, WINDOW_HEIGHT],
       outputRange: [0, 1, 0],
     });
   }
 
+  // Open style for animations
   const openStyle = [
     styles.open,
     {
       left: openVal.current.interpolate({
         inputRange: [0, 1],
-        outputRange: [props.origin.x, target.x],
+        outputRange: [origin.x, target.x],
       }),
       top: openVal.current.interpolate({
         inputRange: [0, 1],
-        outputRange: [props.origin.y, target.y],
+        outputRange: [origin.y, target.y],
       }),
       width: openVal.current.interpolate({
         inputRange: [0, 1],
-        outputRange: [props.origin.width, WINDOW_WIDTH],
+        outputRange: [origin.width, WINDOW_WIDTH],
       }),
       height: openVal.current.interpolate({
         inputRange: [0, 1],
-        outputRange: [props.origin.height, WINDOW_HEIGHT],
+        outputRange: [origin.height, WINDOW_HEIGHT],
       }),
     },
   ];
 
+  // Background component
   const background = (
     <Animated.View
-      style={[
-        styles.background,
-        { backgroundColor: props.backgroundColor },
-        lightboxOpacityStyle,
-      ]}
-    ></Animated.View>
+      style={[styles.background, { backgroundColor }, lightboxOpacityStyle]}
+    />
   );
+
+  // Header component
   const header = (
     <Animated.View style={[styles.header, lightboxOpacityStyle]}>
-      {props.renderHeader ? (
-        props.renderHeader(close)
+      {renderHeader ? (
+        renderHeader(close)
       ) : (
         <TouchableOpacity onPress={close}>
           <Text style={styles.closeButton}>×</Text>
@@ -335,29 +347,27 @@ const LightboxOverlay = (props) => {
       )}
     </Animated.View>
   );
+
+  // Content component
   const content = (
     <Animated.View
       style={[openStyle, dragStyle, animations.current]}
       {...handlers}
     >
-      {props.children}
+      {children}
     </Animated.View>
   );
 
   return (
     <>
-      {props.navigator ? (
+      {navigator ? (
         <View>
           {background}
           {content}
           {header}
         </View>
       ) : (
-        <Modal
-          visible={props.isOpen}
-          transparent={true}
-          onRequestClose={() => close()}
-        >
+        <Modal visible={isOpen} transparent onRequestClose={close}>
           {background}
           {content}
           {header}
@@ -373,13 +383,13 @@ LightboxOverlay.propTypes = {
     y: PropTypes.number,
     width: PropTypes.number,
     height: PropTypes.number,
-  }),
+  }).isRequired,
   springConfig: PropTypes.shape({
     tension: PropTypes.number,
     friction: PropTypes.number,
   }),
   backgroundColor: PropTypes.string,
-  isOpen: PropTypes.bool,
+  isOpen: PropTypes.bool.isRequired,
   renderHeader: PropTypes.func,
   onOpen: PropTypes.func,
   onClose: PropTypes.func,
@@ -388,12 +398,9 @@ LightboxOverlay.propTypes = {
   willClose: PropTypes.func,
   swipeToDismiss: PropTypes.bool,
   useNativeDriver: PropTypes.bool,
-};
-
-LightboxOverlay.defaultProps = {
-  springConfig: { tension: 30, friction: 7 },
-  backgroundColor: "black",
-  useNativeDriver: false,
+  children: PropTypes.node,
+  navigator: PropTypes.object,
+  didOpen: PropTypes.func,
 };
 
 export default LightboxOverlay;

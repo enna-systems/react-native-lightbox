@@ -1,11 +1,42 @@
-import React, { Children, cloneElement, useState, useRef } from "react";
-import { Animated, TouchableOpacity, View } from "react-native";
+import React, {
+  Children,
+  cloneElement,
+  useState,
+  useRef,
+  useCallback,
+} from "react";
+import {
+  Animated,
+  TouchableOpacity,
+  View,
+  StyleSheet,
+  Easing,
+} from "react-native";
 import PropTypes from "prop-types";
 import LightboxOverlay from "./LightboxOverlay";
 
-const Lightbox = (props) => {
+const Lightbox = ({
+  activeProps,
+  renderHeader,
+  renderContent,
+  underlayColor,
+  backgroundColor = "black",
+  didOpen = () => {},
+  onOpen = () => {},
+  willClose = () => {},
+  onClose = () => {},
+  doubleTapCallback = () => {},
+  doubleTapMaxZoom = 2,
+  onLongPress = null,
+  onLayout = () => {},
+  springConfig = { tension: 30, friction: 7 },
+  swipeToDismiss = true,
+  navigator,
+  children,
+  style,
+}) => {
   const layoutOpacity = useRef(new Animated.Value(1));
-  const _root = useRef();
+  const rootRef = useRef(null);
 
   const [isOpen, setIsOpen] = useState(false);
   const [origin, setOrigin] = useState({
@@ -15,96 +46,104 @@ const Lightbox = (props) => {
     height: 0,
   });
 
-  getContent = () => {
-    if (props.renderContent) {
-      return props.renderContent();
-    } else if (props.activeProps) {
-      return cloneElement(Children.only(props.children), props.activeProps);
+  const getContent = useCallback(() => {
+    if (renderContent) {
+      return renderContent();
+    } else if (activeProps) {
+      return cloneElement(Children.only(children), activeProps);
     }
-    return props.children;
-  };
+    return children;
+  }, [renderContent, activeProps, children]);
 
-  getOverlayProps = () => ({
-    isOpen: isOpen,
-    origin: origin,
-    renderHeader: props.renderHeader,
-    swipeToDismiss: props.swipeToDismiss,
-    springConfig: props.springConfig,
-    backgroundColor: props.backgroundColor,
-    children: getContent(),
-    didOpen: props.didOpen,
-    willClose: props.willClose,
-    onClose: onClose,
-    doubleTapCallback: props.doubleTapCallback,
-    doubleTapMaxZoom: props.doubleTapMaxZoom,
-  });
+  const handleOpen = useCallback(() => {
+    if (!rootRef.current) return;
 
-  open = () => {
-    _root.current.measure((ox, oy, width, height, px, py) => {
-      props.onOpen();
+    rootRef.current.measure((ox, oy, width, height, px, py) => {
+      onOpen();
 
-      setIsOpen(props.navigator ? true : false);
-      setOrigin({
-        width,
-        height,
-        x: px,
-        y: py,
-      });
+      setOrigin({ x: px, y: py, width, height });
 
-      props.didOpen();
+      if (navigator) {
+        setIsOpen(true);
+        didOpen();
 
-      if (props.navigator) {
         const route = {
           component: LightboxOverlay,
           passProps: getOverlayProps(),
         };
 
-        const routes = props.navigator.getCurrentRoutes();
+        const routes = navigator.getCurrentRoutes();
         routes.push(route);
-        props.navigator.immediatelyResetRouteStack(routes);
+        navigator.immediatelyResetRouteStack(routes);
       } else {
         setIsOpen(true);
       }
 
       setTimeout(() => {
-        _root && _root.current && layoutOpacity.current.setValue(0);
-      });
+        layoutOpacity.current.setValue(0);
+      }, 0);
     });
-  };
+  }, [navigator, onOpen, didOpen, getOverlayProps]);
 
-  close = () => {
-    throw new Error(
-      "Lightbox.close method is deprecated. Use renderHeader(close) prop instead."
-    );
-  };
-
-  onClose = () => {
+  const handleClose = useCallback(() => {
     layoutOpacity.current.setValue(1);
-
     setIsOpen(false);
 
-    if (props.navigator) {
-      const routes = props.navigator.getCurrentRoutes();
+    if (navigator) {
+      const routes = navigator.getCurrentRoutes();
       routes.pop();
-      props.navigator.immediatelyResetRouteStack(routes);
+      navigator.immediatelyResetRouteStack(routes);
     }
 
-    props.onClose && props.onClose();
-  };
+    onClose();
+  }, [navigator, onClose]);
+
+  const getOverlayProps = useCallback(
+    () => ({
+      isOpen,
+      origin,
+      renderHeader,
+      swipeToDismiss,
+      springConfig,
+      backgroundColor,
+      children: getContent(),
+      didOpen,
+      willClose,
+      onClose: handleClose,
+      doubleTapCallback,
+      doubleTapMaxZoom,
+    }),
+    [
+      isOpen,
+      origin,
+      renderHeader,
+      swipeToDismiss,
+      springConfig,
+      backgroundColor,
+      getContent,
+      didOpen,
+      willClose,
+      handleClose,
+      doubleTapCallback,
+      doubleTapMaxZoom,
+    ]
+  );
 
   return (
-    <View ref={_root} style={props.style} onLayout={props.onLayout}>
-      <Animated.View style={{ opacity: layoutOpacity.current }}>
+    <View ref={rootRef} style={style} onLayout={onLayout}>
+      <Animated.View
+        style={[styles.container, { opacity: layoutOpacity.current }]}
+      >
         <TouchableOpacity
           activeOpacity={1}
-          underlayColor={props.underlayColor}
-          onPress={open}
-          onLongPress={props.onLongPress}
+          underlayColor={underlayColor}
+          onPress={handleOpen}
+          onLongPress={onLongPress}
         >
-          {props.children}
+          {children}
         </TouchableOpacity>
       </Animated.View>
-      {props.navigator ? false : <LightboxOverlay {...getOverlayProps()} />}
+      {!navigator && isOpen && <LightboxOverlay {...getOverlayProps()} />}
     </View>
   );
 };
@@ -128,18 +167,15 @@ Lightbox.propTypes = {
     friction: PropTypes.number,
   }),
   swipeToDismiss: PropTypes.bool,
+  navigator: PropTypes.object,
+  children: PropTypes.node.isRequired,
+  style: PropTypes.oneOfType([PropTypes.object, PropTypes.array]),
 };
 
-Lightbox.defaultProps = {
-  swipeToDismiss: true,
-  onOpen: () => {},
-  didOpen: () => {},
-  willClose: () => {},
-  onClose: () => {},
-  onLongPress: null, // in andriod mobile, e.g HuaWei Nova5 Plus+, onPress will not work well
-  onLayout: () => {},
-  doubleTapCallback: () => {},
-  doubleTapMaxZoom: 2,
-};
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: "transparent",
+  },
+});
 
 export default Lightbox;
