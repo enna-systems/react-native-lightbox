@@ -367,7 +367,12 @@ const LightboxOverlay = ({
           {header}
         </View>
       ) : (
-        <Modal visible={isOpen} transparent onRequestClose={close}>
+        <Modal
+          visible={isOpen}
+          transparent
+          onRequestClose={close}
+          statusBarTranslucent
+        >
           {background}
           {content}
           {header}
